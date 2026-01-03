@@ -43,31 +43,28 @@ public abstract class InteractWithEntityListener implements PacketListener {
     }
 
     /**
-     * Register listener
+     * Register listener synchronously
      */
     public void register() {
-        ProtocolLibrary.getProtocolManager().getAsynchronousManager().registerAsyncHandler(this).start();
+        ProtocolLibrary.getProtocolManager().addPacketListener(this);
     }
 
     /**
      * Unregister listener
      */
     public void unregister() {
-        ProtocolLibrary.getProtocolManager().getAsynchronousManager().unregisterAsyncHandler(this);
+        ProtocolLibrary.getProtocolManager().removePacketListener(this);
     }
 
     @Override
     public final void onPacketReceiving(@NotNull PacketEvent event) {
-        event.getAsyncMarker().incrementProcessingDelay();
-        YamipaPlugin.getInstance().getScheduler().runInGame(() -> {
-            try {
-                handleInteraction(event);
-            } catch (Exception e) {
-                LOGGER.severe("Failed to handle entity interaction", e);
-            } finally {
-                ProtocolLibrary.getProtocolManager().getAsynchronousManager().signalPacketTransmission(event);
-            }
-        }, event.getPlayer().getLocation(), -1);
+        // Handle on the Main Server Thread. In 1.21.11, it appears to be broken if handled asynchronously.
+        // TODO: Investigate if there is any performance impact, probably not.
+        try {
+            handleInteraction(event);
+        } catch (Exception e) {
+            LOGGER.severe("Failed to handle entity interaction", e);
+        }
     }
 
     /**
